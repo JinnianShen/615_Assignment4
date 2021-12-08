@@ -57,5 +57,24 @@ ggplot(moon_10,aes(no,sentiment))+geom_col()
 ```
 #'In sentence level sentiment analysis using sentimentr package, I first load my book into number space. Then I use the polarity level function to assign the sentiment value to 'positive', 'neutral' and 'negative' levels. To plot the column diagram, I filtered the 'neural's. As the plot showed, the positive sentiment words mostly appears in the begining of book. Most of the rest of sentences remain negative, just as the chapter level analysis I did in task 2.
 
+```{r}
+moon_dir<-grep("Stroeve",moon$text)
+moon_st<-grep("Strickland",moon$text)
+chara<-list(moon_dir,moon_st)
+chara_list<-do.call(cbind,
+        lapply(lapply(chara, unlist),'length<-', max(lengths(chara))))
+chara_list[is.na(chara_list)]=0
+chara_list1<-data.frame(chara_list)
+chara_list1_no<-order(chara_list1[,1])
+chara_list1_no2<-order(chara_list1$X2)
 
+ggplot(chara_list1,aes(x=chara_list1_no2,y=X2))+
+  geom_point(color='red')+
+  xlab("Charles Strickland")+ylab("index")
 
+ggplot(chara_list1,aes(x=chara_list1_no,y=X1))+
+  geom_point(color='blue')+
+  xlab("Dirk Stroeve")+ylab("index")
+```
+
+#'I choose the main charator Charles Strikland and the husband of his second lover Dirk Stroeve and track their story lines. Charles appears 469 times through the begining to end of this book. Dirk appears 165 times and mostly in the middle part of book. They had so much overlap because Dirk was the first person to recognize Charles's painting. Even though his wife cheated on Charles,  he was still willing to help them financially.
