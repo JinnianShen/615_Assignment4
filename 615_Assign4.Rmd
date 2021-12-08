@@ -1,0 +1,61 @@
+---
+title: "Assignment4"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#Task 2
+```{r}
+library(gutenbergr)
+library(tidytext)
+library(dplyr)
+library(stringr)
+library(tidyr)
+library(ggplot2)
+moon<-gutenberg_download(222)
+moon_1<-mutate(moon,linenumber=row_number(),
+                chapter=cumsum(str_detect(text,regex("^CHAPTER",ignore_case = TRUE))))
+moon_2<-unnest_tokens(moon_1,word,text)
+moon_3<-anti_join(moon_2,stop_words)
+moon_4<-inner_join(moon_3,get_sentiments("bing"))
+moon_5<-count(moon_4,index=chapter,sentiment)
+moon_6<-spread(moon_5,sentiment,n)
+moon_7<-mutate(moon_6,sentiment=positive-negative)
+ggplot(moon_7,aes(index,sentiment))+geom_col()
+```
+#'I use chapter length and 'bing' sentiment dictionary to display the plotline of the book. "The Moon and Sixpence" is filled with bizarre and tragic encounters after the main character leaves home to pursue his dream. So the graph I create only had some positive sentiment words at the beginning, and most of the rest were negative.
+
+
+#Task 3
+```{r}
+devtools::install_github("Truenumbers/tnum/tnum")
+
+library(tidyverse)
+library(knitr)
+library(kableExtra)
+library(tnum)
+tnum.authorize("mssp1.bu.edu")
+tnum.setSpace("test2")
+moon<-gutenberg_download(222)
+source("Book2TN-v6A-1.R")
+tnBooksFromLines(moon$text, "william/test2")
+moon_txt <- readLines(moon$text)
+tnum.getDBPathList(taxonomy="subject", levels=2)
+library(sentimentr)
+library(tidyverse)
+moon_8<- moon %>% 
+  get_sentences() %>% 
+  sentiment() ->moon_senti
+moon_9<- mutate(moon_senti,polarity_level = ifelse(sentiment < -0.8, "Negative",
+                                                   ifelse(sentiment > 0.8, "Positive","Neutral")))
+moon_10<- filter(moon_9, !polarity_level == "Neutral")
+moon_10$no<-order(moon_10[,1])
+ggplot(moon_10,aes(no,sentiment))+geom_col()
+```
+#'In sentence level sentiment analysis using sentimentr package, I first load my book into number space. Then I use the polarity level function to assign the sentiment value to 'positive', 'neutral' and 'negative' levels. To plot the column diagram, I filtered the 'neural's. As the plot showed, the positive sentiment words mostly appears in the begining of book. Most of the rest of sentences remain negative, just as the chapter level analysis I did in task 2.
+
+
+
