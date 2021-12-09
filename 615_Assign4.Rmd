@@ -7,7 +7,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-#Task 2
+##Task 2
 ```{r}
 library(gutenbergr)
 library(tidytext)
@@ -26,10 +26,10 @@ moon_6<-spread(moon_5,sentiment,n)
 moon_7<-mutate(moon_6,sentiment=positive-negative)
 ggplot(moon_7,aes(index,sentiment))+geom_col()
 ```
-#'I use chapter length and 'bing' sentiment dictionary to display the plotline of the book. "The Moon and Sixpence" is filled with bizarre and tragic encounters after the main character leaves home to pursue his dream. So the graph I create only had some positive sentiment words at the beginning, and most of the rest were negative.
+##I use chapter length and 'bing' sentiment dictionary to display the plotline of the book. "The Moon and Sixpence" is filled with bizarre and tragic encounters after the main character leaves home to pursue his dream. So the graph I create only had some positive sentiment words at the beginning, and most of the rest were negative.
 
 
-#Task 3
+##Task 3
 ```{r}
 devtools::install_github("Truenumbers/tnum/tnum")
 
@@ -37,6 +37,8 @@ library(tidyverse)
 library(knitr)
 library(kableExtra)
 library(tnum)
+library(sentimentr)
+library(tidyverse)
 tnum.authorize("mssp1.bu.edu")
 tnum.setSpace("test2")
 moon<-gutenberg_download(222)
@@ -44,37 +46,101 @@ source("Book2TN-v6A-1.R")
 tnBooksFromLines(moon$text, "william/test2")
 moon_txt <- readLines(moon$text)
 tnum.getDBPathList(taxonomy="subject", levels=2)
+library(magrittr)
+
+
+##Get my book in sentence level
+pq1 <- tnum.query("william/test2/section:* has ordinal", max = 7000)
+pqdf1 <- tnum.objectsToDf(pq1)
+bk_df <- pqdf1 %>% separate(col=subject, sep="/para", into = c("section", "para")) 
+
+bk_df %<>% separate(col=section, sep=":", into= c("out","section"))
+
+bk_df %<>% separate(col=para, sep="/", into=c("pars", "sent"))
+
+bk_df %<>% separate(col=pars, sep=":", into=c("out1", "para"))
+
+bk_df %<>% separate(col=sent, sep=":", into=c("out2", "sent"))
+
+bk_df %<>% rename(ordinal=numeric.value)
+
+bk_df %<>% select(section, para, sent, ordinal)
+pq2 <- tnum.query("william/test2/section:* has count:#", max = 7000)
+pqdf2 <- tnum.objectsToDf(pq2)
+
+bk_w_df <- pqdf2 %>% separate(col=subject, sep="e:", into=c("out", "sent1"))
+
+bk_w_df %<>% rename(word_count = numeric.value)
+
+bk_w_df %<>% select(sent1, word_count)
+
+bk_df1 <- cbind2(bk_df, bk_w_df)
+
+a <- filter(bk_df1, sent==sent1)
+
+bk_df1 %<>% select(section, para, sent, ordinal, word_count) 
+
+
+pq3 <- tnum.query("william/test2/section:* has text", max = 7000)
+pqdf3 <- tnum.objectsToDf(pq3)
+
+bk_t_df <- pqdf3 %>% separate(col=subject, sep="e:", into=c("out", "sent1"))
+
+bk_t_df %<>% rename(s_text = string.value)
+
+bk_t_df %<>% select(s_text)
+
+bk_df_2 <- cbind2(bk_df1, bk_t_df)
+
+##Now do the sentiment analysis
 library(sentimentr)
-library(tidyverse)
-moon_8<- moon %>% 
+
+moon_a<- bk_df_2 %>% 
   get_sentences() %>% 
-  sentiment() ->moon_senti
-moon_9<- mutate(moon_senti,polarity_level = ifelse(sentiment < -0.8, "Negative",
-                                                   ifelse(sentiment > 0.8, "Positive","Neutral")))
-moon_10<- filter(moon_9, !polarity_level == "Neutral")
-moon_10$no<-order(moon_10[,1])
-ggplot(moon_10,aes(no,sentiment))+geom_col()
-```
-#'In sentence level sentiment analysis using sentimentr package, I first load my book into number space. Then I use the polarity level function to assign the sentiment value to 'positive', 'neutral' and 'negative' levels. To plot the column diagram, I filtered the 'neural's. As the plot showed, the positive sentiment words mostly appears in the begining of book. Most of the rest of sentences remain negative, just as the chapter level analysis I did in task 2.
+  sentiment() ->moon_x
+moon_b<- data.frame(moon_x$ordinal,moon_x$sentiment)
 
+moon_c<- mutate(moon_b,polarity_level = ifelse(moon_x.sentiment < -0.8, "Negative",
+                                                   ifelse(moon_x.sentiment > 0.8, "Positive","Neutral")))
+moon_d<- filter(moon_c, !polarity_level == "Neutral")
+
+
+moon_d$no<-order(moon_d[,1])
+ggplot(moon_d,aes(no,moon_x.sentiment))+geom_col()
+
+```
+##In sentence level sentiment analysis using sentimentr package, I first load my book into number space. Then I use the polarity level function to assign the sentiment value to 'positive', 'neutral' and 'negative' levels. To plot the column diagram, I filtered the 'neural's. As the plot showed, the positive and negative sentiment sentences are distributed equally. However, in my task 2, the negative sentiment is more significant. That's because this book has a melancholy tone. 
+
+
+##Tag the charactors and show the story line
 ```{r}
-moon_dir<-grep("Stroeve",moon$text)
-moon_st<-grep("Strickland",moon$text)
-chara<-list(moon_dir,moon_st)
-chara_list<-do.call(cbind,
-        lapply(lapply(chara, unlist),'length<-', max(lengths(chara))))
-chara_list[is.na(chara_list)]=0
-chara_list1<-data.frame(chara_list)
-chara_list1_no<-order(chara_list1[,1])
-chara_list1_no2<-order(chara_list1$X2)
+q30 <- tnum.query("william/test2/section:# has * = REGEXP(\" Stroeve\")", max = 100)
+qdf30 <- tnum.objectsToDf(q30)
+tnum.tagByQuery("william/test2/section:# has * = REGEXP(\" Stroeve\")", adds=("Dirk Stroeve"))
 
-ggplot(chara_list1,aes(x=chara_list1_no2,y=X2))+
-  geom_point(color='red')+
-  xlab("Charles Strickland")+ylab("index")
+q31 <- tnum.query("william/test2/section:# has * = REGEXP(\" Strickland \")", max=1000)
+qdf31 <- tnum.objectsToDf(q31)
+tnum.tagByQuery("william/test2/section:# has * = REGEXP(\" Strickland \")", adds=("Charles Strickland"))
 
-ggplot(chara_list1,aes(x=chara_list1_no,y=X1))+
-  geom_point(color='blue')+
-  xlab("Dirk Stroeve")+ylab("index")
+pq4 <- tnum.query("william/test2/section:* has text", max = 7000)
+pqdf4 <- tnum.objectsToDf(pq4)
+
+bk_tag_df <- pqdf4 %>% select(tags)
+
+bk_df_3 <- cbind2(bk_df, bk_tag_df)
+bk_df_3 %>%
+  na_if("") %>%
+  na.omit
+
+bk_di<- filter(bk_df_3, tags == "Stroeve,Dirk Stroeve")
+bk_ch<- filter(bk_df_3, tags == "Charles Strickland")
+bk_chdi<- filter(bk_df_3, tags == "Stroeve,Dirk Stroeve,Charles Strickland")
+chara_1<- rbind(bk_di,bk_ch,bk_chdi)
+chara_1$no<- order(chara_1[,4])
+ggplot(chara_1,aes(x=ordinal,y=no,color=tags))+
+  geom_point()+
+  xlab("Story Line")+ylab("index")
+
 ```
 
-#'I choose the main charator Charles Strikland and the husband of his second lover Dirk Stroeve and track their story lines. Charles appears 469 times through the begining to end of this book. Dirk appears 165 times and mostly in the middle part of book. They had so much overlap because Dirk was the first person to recognize Charles's painting. Even though his wife cheated on Charles,  he was still willing to help them financially.
+##I choose the main charator Charles Strikland and the husband of his second lover Dirk Stroeve and track their story lines. Charles appears all through the begining to end of this book. Dirk appears only in the second half part of book. They had intersection because Dirk's wife cheated on Charles,and he was so kind to help Charles after all this. 
